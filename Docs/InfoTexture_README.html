@@ -1,0 +1,275 @@
+<html>
+<head>
+	<title>InfoTexture</title>
+	<style type="text/css">
+	<--
+		hr { color:rgb(140,140,140); height:1px; }
+		img { border-style:solid; border-width:1px; border-color:rgb(0,0,0); }
+		code { color:rgb(0,0,220); }
+		p.indent { padding:0pt 0pt 0pt 20pt }
+		dl.indent { padding:0pt 0pt 0pt 20pt }
+		dt { font-weight:bold }
+		dd { padding:3pt; }
+		li { padding:3pt; }
+		li.compact { padding:0pt; }
+		body { color:rgb(0,0,0); background-color:rgb(220,220,220); font-family:"Veranda","Arial","sans-serif"; font-size:10pt; }
+		A { text-decoration:none; }
+		A:link { color:rgb(0,0,150); }
+		A:visited { color:rgb(127,0,0) }
+		A:hover { background-color:rgb(255,255,0); }
+		.TPtext { color: #000000; }
+		.TPkeyword1 { color: #0000FF; }
+		.TPkeyword5 { color: #000080; }
+		.TPcomment { color: #008000; }
+		.TPnumber { color: #000000; }
+		.TPbracket { color: #FF0000; }
+		.TPoperator { color: #000000; }
+		.block {
+			background-color: rgb(225,225,225);
+			padding-top: 10px;
+			padding-bottom: 10px;
+			padding-left: 10px;
+			padding-right: 10px;
+			border: 1px solid rgb(134,134,134);
+		}
+		.keyword { color:rgb(0,0,180); }
+	-->
+	</style>
+</head>
+
+<body>
+
+<a name="top"></a>
+<h1>InfoTexture</h1>
+<ul>
+	<li class="compact"><a href="#tips">General Tips</a></li>
+	<li class="compact"><a href="#parameters">Parameters</a></li>
+	<li class="compact"><a href="#usecases">Use Cases</a></li>
+	<li class="compact"><a href="#history">History</a></li>
+	<LI CLASS="compact"><A HREF="#contact">Contact / Disclaimer / License</A></LI>
+</ul>
+
+<hr>
+<div align="center">
+	<p>Shade the surface according to various surface properties.</p>
+	<p><img src="./images/InfoTextureSample.png" ALT="Sample Image"></p>
+</div>
+
+<a name="tips"></a>
+<hr>
+<h3>General Tips:</h3>
+<p>
+This texture is intended to be used to render passes of a scene that will later be used in a compositing program or post-process script.  The colors returned by this texture are <i>very</i> sensitive to the scene settings, and many things can throw off the returned colors.  The following is a list of common gotchas:
+</p>
+<ul>
+	<li>Any lights or shading in the scene will cause the returned values to be invalid.  The best way to set up your scene is to assign this texture to a fully self-illuminated material, and turn off any lights in the scene.  <i>Note</i>: if you have no lights in the scene, the 3dsmax scanline renderer will render with default lighting.  To get around this, manually create a single light, and turn it off.</li>
+	<li>Antialiasing/motion blur/depth of field will also invalidate the colors created by InfoTexture.  For certain uses (ie. using a Normal pass to create post-processed distortion effects), this is acceptible.</li>
+	<li>Anything else that alters the color of the final image/material will also cause problems.  This includes specular values, atmospheric effects, render effects, and ambient lighting.</li>
+	<li>Saving your renderings to certain file formats will throw off the values of the texture.  The default Targa IO plugin is an example of such a format.  This is especially bad for the <span class="keyword">Face Index</span> mode.  In this case, use the TIF format in 8-bit mode instead.</li>
+</ul>
+<p><a href="#top">Back To Top...</a></p>
+
+<a name="parameters"></a>
+<hr>
+<h3>Parameters:</h3>
+<dl>
+<dt class="keyword">Info Type</dt>
+<dd>
+	The <span class="keyword">Info Type</span> lets you choose what info is used to shade the surface.<br>
+	NOTE: MaxScript access to this parameter is through an interface.  Running <code>ShowInterfaces InfoTexture</code> will show how to get/set this property.
+	<dl>
+	<dt class="keyword">Face Index</dt>
+	<dd>
+		This mode encodes the face index of the rendered mesh into a 24-bit color.  For any given pixel, you can get the face index under that pixel using this function:<br>
+<pre class="block">
+<span class="TPcomment">-- Takes a color from an image rendered using "Face Index" texture.</span>
+<span class="TPcomment">-- Returns an actual (1-based) face index of a mesh.</span>
+<span class="TPkeyword1">fn </span>GetFaceIndexFromColor <span class="TPkeyword5">color </span><span class="TPoperator">=</span>
+<span class="TPbracket">(</span>
+    <span class="TPbracket">(</span><span class="TPkeyword5">color</span>.r <span class="TPoperator">+ </span><span class="TPbracket">(</span>bit.Shift <span class="TPkeyword5">color</span>.g <span class="TPnumber">8</span><span class="TPbracket">) </span><span class="TPoperator">+ </span><span class="TPbracket">(</span>bit.Shift <span class="TPkeyword5">color</span>.b <span class="TPnumber">16</span><span class="TPbracket">) </span><span class="TPoperator">+ </span><span class="TPnumber">1</span><span class="TPbracket">) </span><span class="TPkeyword1">as </span><span class="TPkeyword5">Integer</span>
+<span class="TPbracket">)</span>
+</pre>
+	</dd>
+	<dt class="keyword">Barycentric Coordinates</dt>
+	<dd>
+		The barycentric coordinates of the rendered face.  You can get a position on the mesh using the barycentric coordinates like this:
+<pre class="block">
+<span class="TPkeyword1">fn </span>GetPointOnFace myMesh faceIndex baryCoordColor <span class="TPoperator">=</span>
+<span class="TPbracket">(</span>
+    <span class="TPcomment">-- faceIndex assumed to be known beforehand (ie. by using the Face Index mode)</span>
+    <span class="TPcomment">-- baryCoordColor is a pixel color from a rendering</span>
+
+    <span class="TPkeyword1">local </span>baryCoord <span class="TPoperator">= </span><span class="TPkeyword5">Point3 </span><span class="TPbracket">(</span>baryCoordColor.r<span class="TPoperator">/</span><span class="TPnumber">255.0</span><span class="TPbracket">) (</span>baryCoordColor.g<span class="TPoperator">/</span><span class="TPnumber">255.0</span><span class="TPbracket">) (</span>baryCoordColor.b<span class="TPoperator">/</span><span class="TPnumber">255.0</span><span class="TPbracket">)</span>
+    <span class="TPkeyword1">local </span>faceVerts <span class="TPoperator">= </span><span class="TPkeyword5">GetFace </span>myMesh faceIndex
+    <span class="TPkeyword1">local </span>v1 <span class="TPoperator">= </span><span class="TPkeyword5">GetVert </span>myMesh faceVerts<span class="TPbracket">[</span><span class="TPnumber">1</span><span class="TPbracket">]</span>
+    <span class="TPkeyword1">local </span>v2 <span class="TPoperator">= </span><span class="TPkeyword5">GetVert </span>myMesh faceVerts<span class="TPbracket">[</span><span class="TPnumber">2</span><span class="TPbracket">]</span>
+    <span class="TPkeyword1">local </span>v3 <span class="TPoperator">= </span><span class="TPkeyword5">GetVert </span>myMesh faceVerts<span class="TPbracket">[</span><span class="TPnumber">3</span><span class="TPbracket">]</span>
+
+    v1 <span class="TPoperator">* </span>baryCoord.x <span class="TPoperator">+ </span>v2 <span class="TPoperator">* </span>baryCoord.y <span class="TPoperator">+ </span>v3 <span class="TPoperator">* </span>baryCoord.z
+<span class="TPbracket">)</span>
+</pre>
+	</dd>
+	<dt class="keyword">UVW Coordinates</dt>
+	<dd>
+		Simply shows the UVW coordinates of the surface.  The <span class="keyword">UVW Channel</span> and <span class="keyword">Wrap Mode</span> options become available with this type.
+	</dd>
+	<dd></dd>
+	<dt class="keyword">Normal</dt>
+	<dd>
+		Shows the interpolated/smoothed surface normal.  You can show the normal in one of the following coordinate systems:
+	</dd>
+	<dt class="keyword">Reflect Vector</dt>
+	<dd>
+		Encodes the reflection of the view vector about the surface normal vector.<br>
+		RGB corresponds to XYZ, with a color value of 0 representing -1.0, 255 representing +1.0, and 127.5 representing 0.0 for component.
+	</dd>
+	<dt class="keyword">Refract Vector</dt>
+	<dd>
+		Encodes the refraction of the view vector about the surface normal vector.  Uses the current IOR setting of the material.<br>
+		RGB corresponds to XYZ, with a value of 0 representing -1.0, 255 representing +1.0, and 127.5 representing 0.0 for component.
+	</dd>
+	<dt class="keyword">Object Bounding Box</dt>
+	<dd>
+		Encodes the object space position of the surface.  RGB[0,0,0] is at the "lower left front" corner of the object bounding box, and RGB[255,255,255] is at the "upper right rear" corner.
+	</dd>
+	<dt class="keyword">Vertex Data</dt>
+	<dd>
+		Shows the values of any custom vertex data on the mesh.  The <span class="keyword">Vertex Data Channel</span> and <span class="keyword">Wrap Mode</span> options become available with this type.  See the description of the <span class="keyword">Vertex Data Channel</span> parameter for information on what is contained in these channels.
+	</dd>
+	</dl>
+</dd>
+<dt class="keyword">CoordSys</dt>
+<dd>
+	Selects the coordinate system used when shading using <span class="keyword">Normal</span>, <span class="keyword">Reflect</span>, or <span class="keyword">Refract</span> modes.<br>
+	NOTE: MaxScript access to this parameter is through an interface.  Running <code>ShowInterfaces InfoTexture</code> will show how to get/set this property.
+	<dl>
+	<dt class="keyword">Camera</dt>
+	<dd>
+		R: 0 is pointing left, 255 is pointing right, 128 is pointing at the camera.<br>
+		G: 0 is pointing down, 255 is pointing up, 128 is pointing at the camera.<br>
+		B: This value depends on whether <span class="keyword">Use Full Camera Normal Range</span> is on or not.<br>
+	</dd>
+	<dt class="keyword">World</dt>
+	<dd>
+		The red, green, and blue channels correspond to the X, Y, and Z components of the normal in world space.<br>
+		A value of 0 in a color channel corresponds to -1.0 in the normal component, while 255 corresponds to +1.0, and 128 corresponds to 0.0.
+	</dd>
+	<dt class="keyword">Object</dt>
+	<dd>
+		R: 0 is pointing along -X local axis, 255 is pointing along +X local axis.<br>
+		G: 0 is pointing along -Y local axis, 255 is pointing along +Y local axis.<br>
+		B: 0 is pointing along -Z local axis, 255 is pointing along +Z local axis.<br>
+	</dd>
+	</dl>
+</dd>
+<dt class="keyword">Use Full Camera Normal Range</dt>
+<dd>
+	This option controls how the z component of Camera Space normals are written to the image's blue channel.<br>
+	If off (the default), 0 is perpendicular to the camera, and 255 is pointing at the camera.<br>
+	If on, then 0 is pointing away from the camera, and 255 is pointing at the camera (and 128 is perpendicular to the camera).
+	<p>The reason this option exists is purely to get extra precision when saving to 24-bit formats.  Typically, the z component of the camera normal vector is facing the camera (ie. is between 0.0 and 1.0).  The only time it will be facing away from the camera (ie. be less than 0.0) is via raytraced reflections.  Since this is a relatively rare case, you can get extra precision by ignoring values less than 0.0 and using the full 0-255 color range of the blue channel for normal z values between 0.0 and 1.0.  How exciting!</p>
+</dd>
+<dt class="keyword">UVW Channel</dt>
+<dd>
+	Selects the UVW channel to use for rendering when using the <span class="keyword">UVW Coordinates</span> mode.  Ranges from 0 to 99.  Channel 0 are vertex colors.
+</dd>
+<dt class="keyword">Vertex Data Channel</dt>
+<dd>
+	Selects the Vertex Data channel to use for rendering when using the <span class="keyword">Vertex Data</span> mode.  Ranges from 1 to 100.<br>
+	Note: Channels 1-10 are considered reserved for max internal use.  The currently defined channels are:
+	<ol>
+		<li>The vertex soft selection values.  If you create a soft selection in Sub-Object>Vertex mode of Editable Mesh or Editable Poly, you will only be able to render the soft selection if you stay in Sub-Object mode.  To get a soft selection that's visible out of Sub-Object mode, use the Volume Select modifier.
+		<li>The vertex weights used for meshsmooth.
+		<li>The vertex alpha.  Note this is <i>not</i> the alpha values you edit via editable mesh's "Surface Properties" rollout.  That's actually map channel -2.
+	</ol>
+</dd>
+<dt class="keyword">Wrap Mode</dt>
+<dd>
+	The wrap mode allows you to define what colors you get when the values in the mesh's UVW/Data channels are greater than 1.0, or less than 0.0.<br>
+	NOTE: MaxScript access to this parameter is through an interface.  Running <code>ShowInterfaces InfoTexture</code> will show how to get/set this property.
+	<dl>
+	<dt class="keyword">None</dt>
+	<dd>
+		Nothing special is done to the values outside the 0.0-1.0 range.  When saving to a standard 24-bit format like Targa files, the values outside 0.0-1.0 will simply be clamped.  However, if you save to a floating point format (like OpenEXR), the extended data will be preserved.
+	</dd>
+	<dt class="keyword">Clamp</dt>
+	<dd>
+		Values outside the 0.0-1.0 range are clamped.
+	</dd>
+	<dt class="keyword">Repeat</dt>
+	<dd>
+		The integer portion of values are ignored, so values outside the 0.0-0.99... range are wrapped around (ie. 1.5 becomes 0.5, -0.25 becomes 0.75, and 1.0 becomes 0.0).
+	</dd>
+	</dl>
+</dd>
+</dl>
+<p><a href="#top">Back To Top...</a></p>
+
+<a name="usecases"></a>
+<hr>
+<h3>Use Cases:</h3>
+<dl>
+<dt>100x Faster Hit-testing</dt>
+<dd>
+By rendering two or three passes of the scene, you can collect enough information to do incredibly fast hit-testing on a high-poly scene from a given viewpoint.  As a point of comparison, this is several orders of magnitude faster than the built in IntersectRayEx function.  The render passes should be:
+<ol>
+	<li>A standard max render with the "node" g-buffer channel enabled.  This can be included in one of the other passes for efficiency.</li>
+	<li>A render using InfoTexture's <span class="keyword">Face Index</span> mode.</li>
+	<li>A render using InfoTexture's <span class="keyword">Barycentric Coordinates</span> mode.</li>
+</ol>
+After this, hit-testing can be done for any screen-coordinate through the rendered view by simply looking up colors in the three renders.  See the included "HitTesting.ms" script for a sample implementation.
+</dd>
+<dt>Post-Process Refraction</dt>
+<dd>
+<p><img src="./images/PostRefraction.jpg" ALT="Sample Image"></p>
+<ol>
+	<li>Render out a standard color pass of your scene (the color pass above).</li>
+	<li>Render out the background and any objects that will be refracted through objects (the background pass above).</li>
+	<li>Render out a pass of all the objects that make distortions using InfoTexture set to "Normal" mode.</li>
+	<li>Take the resulting layers into your favorite compositing program of choice.</li>
+	<li>Composite the color pass over the background.</li>
+	<li>Distort the background using your favorite image distortion filter using the Normal pass as the distortion source.</li>
+</ol>
+</dd>
+<dt>Post-Process Skydome Lighting / Texture Mapping</dt>
+<dd>
+<p><img src="./images/PostAmbient.jpg" ALT="Sample Image"></p>
+	This is very similar to the post-process refraction technique above, except the math is slightly different.  For an example implementation, see the "AmbientLightPass.ms" script included with this plugin.  There are two variables at the top of the script that should be changed to point to image files.<br>
+	<br>
+	Texture mapping can be done in a very similar way, only instead of using a <span class="keyword">Normal</span> pass, use a <span class="keyword">UVW Coordinates</span> pass.
+</dd>
+</dl>
+<P><A HREF="#top">Back To Top...</A></P>
+
+<A NAME="history"></A>
+<HR>
+<H3>History:</H3>
+<PRE>
+2008.04.05 - Updated to 64 bit and 3dsmax 2008.  Thanks to <a href="http://www.maxplugins.de/">David Baker</a> for the help.
+</PRE>
+<P><A HREF="#top">Back To Top...</A></P>
+
+<A NAME="contact"></A>
+<HR>
+<H3>Contact / Disclaimer / License:</H3>
+Bug reports/comments/suggestions: <A HREF="http://www.footools.com/">http://www.footools.com/</A>. If you use this software on a project, sending an e-mail/postcard indicating such would be appreciated.<BR>
+<PRE>
+This software is provided 'as-is', without any express or implied warranty. In no
+event will the author be held liable for any damages arising from the use of this
+software.
+
+Permission is granted to anyone to use this software, subject to the following
+restrictions:
+
+1. The origin of this software must NOT be misrepresented; you must not claim that
+   you wrote the original software.
+
+2. This software may NOT be bundled with any other product or included in any
+   compilation without the express permission of the author.
+
+3. This notice must NOT be removed or altered from any distribution of this
+   software.
+</PRE>
+<P><A HREF="#top">Back To Top...</A></P>
+</BODY>
+</HTML>
