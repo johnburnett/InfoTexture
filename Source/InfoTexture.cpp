@@ -67,10 +67,10 @@ static InfoTextureAccessor infoTextureAccessor;
 
 class InfoTextureDlgProc : public ParamMap2UserDlgProc
 {
-#if (MAX_RELEASE >= 9000)
-	INT_PTR DlgProc(TimeValue t, IParamMap2* map, HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-#else
+#if MAX_VERSION_MAJOR < 9	//Max 9
 	BOOL DlgProc(TimeValue t, IParamMap2* map, HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+#else
+	INT_PTR DlgProc(TimeValue t, IParamMap2* map, HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #endif
 	{
 		IParamBlock2* pblock = map->GetParamBlock();
@@ -126,6 +126,9 @@ class InfoTextureDlgProc : public ParamMap2UserDlgProc
 static InfoTextureDlgProc infoTextureDlgProc;
 
 //=================================================================================================
+#if MAX_VERSION_MAJOR < 15	//Max 2013
+ #define p_end end
+#endif
 
 static ParamBlockDesc2 infoTexturePBlockDesc
 (
@@ -144,7 +147,7 @@ static ParamBlockDesc2 infoTexturePBlockDesc
 																IDS_INFO_REFRACT_VECTOR,
 																IDS_INFO_OBJECT_BOUNDING_BOX,
 																IDS_INFO_VERTEX_DATA,
-		end,
+		p_end,
 
 	kIt_wrap_mode, _T(""), TYPE_INT, 0, 0,
 		p_accessor, &infoTextureAccessor,
@@ -153,7 +156,7 @@ static ParamBlockDesc2 infoTexturePBlockDesc
 		p_ui, TYPE_INTLISTBOX, IDC_WRAP_MODE, kWrapModeCount,	IDS_WRAP_NONE,
 																IDS_WRAP_CLAMP,
 																IDS_WRAP_REPEAT,
-		end,
+		p_end,
 
 	kIt_coord_sys, _T(""), TYPE_INT, 0, 0,
 		p_accessor, &infoTextureAccessor,
@@ -162,28 +165,28 @@ static ParamBlockDesc2 infoTexturePBlockDesc
 		p_ui, TYPE_INTLISTBOX, IDC_COORD_SYS, kCoordSysCount,	IDS_COORD_SYS_CAMERA,
 																IDS_COORD_SYS_WORLD,
 																IDS_COORD_SYS_OBJECT,
-		end,
+		p_end,
 
 	kIt_uvw_channel, _T("uvwChannel"), TYPE_INT, 0, IDS_UVW_CHANNEL,
 		p_accessor, &infoTextureAccessor,
 		p_range, 0, (MAX_MESHMAPS-1),
 		p_default, 1,
 		p_ui, TYPE_SPINNER, EDITTYPE_POS_INT, IDC_UVW_CHANNEL_EDIT, IDC_UVW_CHANNEL_SPIN, 1.0f,
-		end,
+		p_end,
 
 	kIt_use_full_camera_normal_range, _T("useFullCameraNormalRange"), TYPE_BOOL, 0, IDS_USE_FULL_CAMERA_NORMAL_RANGE,
 		p_default, FALSE,
 		p_ui, TYPE_SINGLECHEKBOX, IDC_USE_FULL_CAMERA_NORMAL_RANGE,
-		end,
+		p_end,
 
 	kIt_data_channel, _T("dataChannel"), TYPE_INT, 0, IDS_DATA_CHANNEL,
 		p_accessor, &infoTextureAccessor,
 		p_range, 1, MAX_VERTDATA,
 		p_default, 1,
 		p_ui, TYPE_SPINNER, EDITTYPE_POS_INT, IDC_DATA_CHANNEL_EDIT, IDC_DATA_CHANNEL_SPIN, 1.0f,
-		end,
+		p_end,
 
-	end
+	p_end
 );
 
 //=================================================================================================
@@ -199,6 +202,7 @@ static FPInterfaceDesc infoTextureInterfaceDesc
 
 	enums,
 		IInfoTexture::enum_info_type, kInfoTypeCount,
+#if MAX_VERSION_MAJOR < 15	//Max 2013
 		"FaceIndex", kInfoFaceIndex,
 		"BaryCoords", kInfoBaryCoords,
 		"UvwCoords", kInfoUvwCoords,
@@ -207,18 +211,40 @@ static FPInterfaceDesc infoTextureInterfaceDesc
 		"RefractVector", kInfoRefractVector,
 		"ObjectBoundingBox", kInfoObjectBoundingBox,
 		"VertexData", kInfoVertexData,
+#else
+		_T("FaceIndex"), kInfoFaceIndex,
+		_T("BaryCoords"), kInfoBaryCoords,
+		_T("UvwCoords"), kInfoUvwCoords,
+		_T("Normal"), kInfoNormal,
+		_T("ReflectVector"), kInfoReflectVector,
+		_T("RefractVector"), kInfoRefractVector,
+		_T("ObjectBoundingBox"), kInfoObjectBoundingBox,
+		_T("VertexData"), kInfoVertexData,
+#endif
 
 		IInfoTexture::enum_wrap_mode, kWrapModeCount,
+#if MAX_VERSION_MAJOR < 15	//Max 2013
 		"None", kWrapNone,
 		"Clamp", kWrapClamp,
 		"Repeat", kWrapRepeat,
+#else
+		_T("None"), kWrapNone,
+		_T("Clamp"), kWrapClamp,
+		_T("Repeat"), kWrapRepeat,
+#endif
 
 		IInfoTexture::enum_coord_sys, kCoordSysCount,
+#if MAX_VERSION_MAJOR < 15	//Max 2013
 		"Camera", kCoordSysCamera,
 		"World", kCoordSysWorld,
 		"Object", kCoordSysObject,
+#else
+		_T("Camera"), kCoordSysCamera,
+		_T("World"), kCoordSysWorld,
+		_T("Object"), kCoordSysObject,
+#endif
 
-	end
+	p_end
 );
 
 FPInterfaceDesc* IInfoTexture::GetDesc()
@@ -358,7 +384,11 @@ void InfoTexture::SetReference(int i, RefTargetHandle refTarg)
 	}
 }
 
+#if MAX_VERSION_MAJOR < 17 //Max 2015
 RefResult InfoTexture::NotifyRefChanged(Interval changeInt, RefTargetHandle hTarget, PartID& partID, RefMessage message)
+#else
+RefResult InfoTexture::NotifyRefChanged(const Interval& changeInt, RefTargetHandle hTarget, PartID& partID, RefMessage message, BOOL propagate)
+#endif
 {
 	switch (message)
 	{

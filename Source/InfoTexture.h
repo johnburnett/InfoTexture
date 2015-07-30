@@ -2,10 +2,10 @@
 
 #include "Max.h"
 
-#if (MAX_RELEASE >= 9000)
-#include "maxheapdirect.h"	//max 9
+#if MAX_VERSION_MAJOR < 9	//Max 9
+#include "max_mem.h"	//max 8 and earlier
 #else
-#include "max_mem.h"		//max 8 and earlier
+#include "maxheapdirect.h"
 #endif
 
 #include "iparamm2.h"
@@ -132,9 +132,19 @@ public:
 
 	int				NumRefs					();
 	RefTargetHandle	GetReference			(int i);
+#if MAX_VERSION_MAJOR < 14	//Max 2012
 	void			SetReference			(int i, RefTargetHandle refTarg);
+#else
+private:
+	virtual void	SetReference			(int i, RefTargetHandle refTarg);
+public:
+#endif
 
+#if MAX_VERSION_MAJOR < 17	//Max 2015
 	RefResult		NotifyRefChanged		(Interval changeInt, RefTargetHandle hTarget, PartID& partID, RefMessage message);
+#else
+	RefResult		NotifyRefChanged		(const Interval& changeInt, RefTargetHandle hTarget, PartID& partID, RefMessage message, BOOL propagate);
+#endif
 
 	// MtlBase ////////////////////////////////////////////////////////////////////////////////////
 
